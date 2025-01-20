@@ -1,0 +1,36 @@
+[User_FA]
+user_id INT Primary Key
+nama TEXT
+wilayah TEXT
+jabatan TEXT
+
+[gis_wilayah]
+wilayah_id INT Primary Key
+nama TEXT
+gis geom
+
+[gis_plot]
+plot_id TEXT
+var TEXT
+mt TEXT
+planting_date datetime
+status TEXT
+
+[takssasi_hasil]
+umur_taksasi INT
+umur_ditebang INT
+umur_+ INT
+pkp INT
+juring INT
+
+s1_batang float(3,2)
+s1_berat float(3,2)
+s1_tinggi float(3,2)
+
+s2_batang float(3,2)
+s2_berat float(3,2)
+s2_tinggi float(3,2)
+
+s3_batang float(3,2)
+s3_berat float(3,2)
+s3_tinggi float(3,2)
