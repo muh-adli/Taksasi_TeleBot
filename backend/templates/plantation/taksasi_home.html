@@ -1,0 +1,134 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+
+    <!-- Required header -->
+    <link
+      href="{% static 'assets/css/bootstrap/bootstrap.css' %}"
+      rel="stylesheet"
+    />
+    <link
+      href="{% static 'assets/js/leaflet/leaflet.css' %}"
+      rel="stylesheet"
+    />
+
+    <title>Hectare Statement</title>
+
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        width: 100%;
+      }
+
+      header {
+        height: 100px; /* Set header height to 100px */
+        display: flex;
+        align-items: center; /* Center content vertically */
+      }
+
+      content {
+        height: 980px;
+      }
+
+      #map {
+        height: 820px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid p-0">
+      <header
+        class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between px-3 py-3 mb-4 border-bottom"
+      >
+        <div class="col-xl-3 col-lg-3 col-md-3 mb-2 mb-md-0">
+          <a
+            href="/"
+            class="d-inline-flex link-body-emphasis text-decoration-none"
+          >
+            <img
+              width="50"
+              height="50"
+              src="{% static 'assets/img/estate.png' %}"
+            />
+          </a>
+        </div>
+
+        <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
+          <li>
+            <a href="{% url 'landingPage' %}" class="nav-link px-2">Home</a>
+          </li>
+          <li>
+            <a href="#" class="nav-link px-2">HaStatement</a>
+          </li>
+          <li><a href="#" class="nav-link px-2">Data Management</a></li>
+          <li><a href="#" class="nav-link px-2">Geo-Monitoring</a></li>
+          <li><a href="#" class="nav-link px-2">About</a></li>
+        </ul>
+
+        <div class="col-xl-3 col-lg-3 col-md-3 text-end">
+          <button type="button" class="btn btn-outline-primary me-2">
+            Login
+          </button>
+          <button type="button" class="btn btn-primary">Sign-up</button>
+        </div>
+      </header>
+
+      <content>
+        <div id="map"></div>
+      </content>
+    </div>
+
+    <!-- Required JS -->
+    <script src="{% static 'assets/js/leaflet/leaflet.js' %}"></script>
+    <script src="{% static 'assets/js/jquery/jquery-3.7.1.min.js' %}"></script>
+    <script src="{% static 'assets/js/popper/popper.min.js' %}"></script>
+    <script src="{% static 'assets/js/bootstrap/bootstrap.js' %}"></script>
+
+    <script>
+      // Initialize Leaflet map
+      var map = L.map('map').setView([-2.5, 118], 5); // Centered on Indonesia
+
+      // Add OpenStreetMap basemap
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(map);
+
+      // Parse GeoJSON from Django context safely
+      var geojsonData = JSON.parse('{{ geojson|escapejs }}');
+
+      // Add GeoJSON layer to map
+      L.geoJSON(geojsonData, {
+        style: function (feature) {
+          return { color: 'blue', weight: 2, fillOpacity: 0.3 };
+        },
+        onEachFeature: function (feature, layer) {
+          if (feature.properties) {
+            var popupContent =
+              '<b>Plot ID:</b> ' +
+              feature.properties.plot_id +
+              '<br>' +
+              '<b>Desa:</b> ' +
+              feature.properties.desa +
+              '<br>' +
+              '<b>Dusun:</b> ' +
+              feature.properties.dusun +
+              '<br>' +
+              '<b>Wilayah:</b> ' +
+              feature.properties.wilayah;
+            layer.bindPopup(popupContent);
+          }
+        },
+      }).addTo(map);
+    </script>
+  </body>
+</html>
