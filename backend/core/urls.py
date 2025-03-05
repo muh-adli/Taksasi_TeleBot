@@ -26,3 +26,5 @@ urlpatterns = [
     path('API/', include('API.urls')), 
     path('plantation/', include('Plantation.urls')), 
 ]
+
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -16,7 +16,7 @@ from telegram.ext import (
 
 # Load environment variables
 load_dotenv()
-LocalPostgres = urlparse(os.getenv("DATABASE_URL"))
+# LocalPostgres = urlparse(os.getenv("DATABASE_URL"))
 
 # Database connection function
 def connect_to_db():
@@ -82,7 +82,7 @@ USER_ACTIONS = {
 }
 
 # Conversation stages
-USERNAME, PASSWORD, MENU, PLOT_ID, PKP_INPUT, SAMPLE_INPUT, REVIEW_DATA = range(7)
+USERNAME, PASSWORD, MENU, PLOT_ID, PLOT_ID_DETAILS, PLOT_ID_TAKSASI, PKP_INPUT, SAMPLE_INPUT, REVIEW_DATA = range(9)
 
 # Start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -106,7 +106,7 @@ async def handle_password(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return await display_menu(update, context)
     else:
         await update.message.reply_text("Username atau password salah. Silakan coba lagi.")
-        return ConversationHandler.END
+        return USERNAME
 
 # Display menu after successful login
 async def display_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -114,11 +114,11 @@ async def display_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
 
     await update.message.reply_text(
-        "Pilih menu dalam bot taksasi:\n"
+        "Pilih menu dalam bot Taksasi:\n"
         "1: Cek plot detail\n"
-        "2: Cek plot taksasi\n"
-        "3: Cek progress taksasi\n"
-        "0: Input data taksasi\n",
+        "2: Cek Hasil Taksasi\n"
+        "3: Cek progress Taksasi\n"
+        "0: Input data Taksasi\n",
         reply_markup=markup,
     )
     return MENU
@@ -131,24 +131,169 @@ async def handle_response(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         action = USER_ACTIONS[user_response]
         await update.message.reply_text(action)
 
-        if user_response in ["1", "2"]:
+        if user_response == "1":
             await update.message.reply_text("Masukkan Plot ID yang ingin dilakukan pengecekan:")
+            return PLOT_ID_DETAILS
+        elif user_response == "2":
+            await update.message.reply_text("Masukkan Plot ID yang telah dilakukan taksasi:")
+            return PLOT_ID_TAKSASI
+        elif user_response == "0":
+            await update.message.reply_text("Masukkan Plot ID yang akan di taksasi:")
             return PLOT_ID
         elif user_response == "3":
             # Fetch and display progress taksasi
-            await update.message.reply_text("Mengambil progress taksasi...")
-            data = get_progress_taksasi()
-            if data:
-                await update.message.reply_text(f"Progress taksasi: {data}")
-            else:
-                await update.message.reply_text("Tidak ada data progress.")
-            return ConversationHandler.END
-        elif user_response == "0":
-            await update.message.reply_text("Masukkan Plot ID untuk memulai input data taksasi:")
-            return PLOT_ID
+            result = progress()
+            await update.message.reply_text(result)
+            return MENU
     else:
         await update.message.reply_text("Pilihan tidak valid. Silakan pilih 1, 2, 3, atau 0.")
-        return ConversationHandler.END
+        return MENU
+
+async def handle_plot_id_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    plot_id = update.message.text.strip()
+
+    if check_plot_existence(plot_id):
+        conn = connect_to_db()
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT 
+                            plot_id,
+                            petani,
+                            var,
+                            kategori,
+                            kategori_grup,
+                            luas,
+                            desa,
+                            dusun,
+                            wilayah,
+                            department
+                        FROM taksasi.gis_plot
+                        WHERE plot_id = %s;
+                    """, (plot_id,))  # Using parameterized query
+                    
+                    result = cur.fetchone()  # Fetch only one row, assuming plot_id is unique
+
+                    if result:
+                        # Formatting output for Telegram message
+                        plot_details = (
+                            f"Plot ID: {result[0]}\n"
+                            f"Petani: {result[1]}\n"
+                            f"Varietas: {result[2]}\n"
+                            f"Kategori: {result[3]}\n"
+                            f"Kategori Grup: {result[4]}\n"
+                            f"Luas: {result[5]}\n"
+                            f"Desa: {result[6]}\n"
+                            f"Dusun: {result[7]}\n"
+                            f"Wilayah: {result[8]}\n"
+                            f"Department: {result[9]}"
+                        )
+                        await update.message.reply_text(plot_details)
+                    else:
+                        await update.message.reply_text(f"Plot ID {plot_id} tidak ditemukan.")
+            except Exception as e:
+                print(f"Failed to fetch progress taksasi: {e}")
+                await update.message.reply_text("Terjadi kesalahan saat mengambil data.")
+            finally:
+                conn.close()
+        return MENU
+    else:
+        await update.message.reply_text(f"Plot ID {plot_id} tidak ditemukan.")
+        return MENU
+
+
+async def handle_plot_id_taksasi(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    plot_id = update.message.text.strip()
+
+    if check_plot_existence(plot_id):
+        conn = connect_to_db()
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT 
+                            plot_id,
+                            luas,
+                            rata_batang,
+                            rata_tinggi,
+                            rata_berat,
+                            tch,
+                            tonase
+                        FROM
+                            taksasi.view_taksasi_hasil
+                        WHERE plot_id = %s;
+                    """, (plot_id,))  # Using parameterized query
+                    
+                    result = cur.fetchone()  # Fetch only one row, assuming plot_id is unique
+
+                    if result:
+                        # Formatting output for Telegram message
+                        plot_details = (
+                            f"Plot ID: {result[0]}\n"
+                            f"Luas: {result[1]}\n"
+                            f"Rata-rata Batang: {result[2]}\n"
+                            f"Rata-rata Tinggi: {result[3]}\n"
+                            f"Rata-rata Berat: {result[4]}\n"
+                            f"TCH: {result[5]}\n"
+                            f"Tonase: {result[6]}\n"
+                        )
+                        await update.message.reply_text(plot_details)
+                    else:
+                        await update.message.reply_text(f"Taksasi plot {plot_id} tidak ditemukan.")
+            except Exception as e:
+                print(f"Failed to fetch progress taksasi: {e}")
+                await update.message.reply_text("Terjadi kesalahan saat mengambil data.")
+            finally:
+                conn.close()
+        return MENU
+    else:
+        await update.message.reply_text(f"Plot ID {plot_id} tidak ditemukan.")
+        return MENU
+
+def progress():
+    conn = connect_to_db()
+    if conn:
+        print("Database connection successful.")
+        try:
+            with conn.cursor() as cur:
+                print("Fetching progress taksasi from database...")
+                cur.execute("""
+                    SELECT 
+                        COUNT(VTH.plot_id) AS count_view_taksasi_hasil,
+                        COUNT(GP.plot_id) AS count_gis_plot,
+                        CASE 
+                            WHEN COUNT(GP.plot_id) = 0 THEN 0
+                            ELSE ROUND(COUNT(VTH.plot_id)::numeric / COUNT(GP.plot_id), 2)
+                        END AS percentage
+                    FROM 
+                        taksasi.gis_plot AS GP
+                    FULL OUTER JOIN 
+                        taksasi.view_taksasi_hasil AS VTH
+                    ON 
+                        GP.plot_id = VTH.plot_id;
+                """)
+                result = cur.fetchone()
+                print("Query Successful")
+                # print("Query result:", result)
+                if result:
+                    count_view = result[0]
+                    count_gis = result[1]
+                    percentage = result[2]
+                    massage = (
+                        f"Progress taksasi:\n"
+                        f"Plot yang tersaksi: {count_view}\n"
+                        f"Total Plot: {count_gis}\n"
+                        f"Presentase: {percentage * 100:.2f}%"
+                    )
+                else:
+                    massage = "Data progress taksasi tidak ditemukan."
+        except Exception as e:
+            print(f"Failed to fetch progress taksasi: {e}")
+            massage = "Terjadi kesalahan saat mengambil data."
+        finally:
+            conn.close()
+    return massage
 
 # Handle Plot ID input
 async def handle_plot_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -159,7 +304,7 @@ async def handle_plot_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return PKP_INPUT
     else:
         await update.message.reply_text(f"Plot ID {plot_id} tidak ditemukan.")
-        return ConversationHandler.END
+        return PLOT_ID
 
 # Handle PKP input
 async def handle_pkp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -209,13 +354,14 @@ async def handle_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         samples = context.user_data["samples"]
 
         if insert_sample_data(plot_id, pkp, samples):
-            await update.message.reply_text("Semua data berhasil disimpan.")
+            await update.message.reply_text("Semua data berhasil disimpan. Kembali ke Menu.")
+            return MENU
         else:
-            await update.message.reply_text("Gagal menyimpan data ke database.")
-        return MENU
-    else:
-        await update.message.reply_text("Data direset. Mulai dari awal.")
+            await update.message.reply_text("Gagal menyimpan data ke database. Masukan Plot ID:")
         return PLOT_ID
+    else:
+        await update.message.reply_text("Data direset. Mulai dari awal. Kembali ke Menu.")
+        return MENU
 
 # Verify user credentials in the database
 def verify_user(username, password):
@@ -235,20 +381,6 @@ def verify_user(username, password):
             conn.close()
     return False
 
-# Fetch progress taksasi from the database
-def get_progress_taksasi():
-    conn = connect_to_db()
-    if conn:
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT progress FROM taksasi_progress;")
-                return cur.fetchall()
-        except Exception as e:
-            print(f"Failed to fetch progress taksasi: {e}")
-        finally:
-            conn.close()
-    return None
-
 # Cancel handler
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Operasi dibatalkan.")
@@ -265,6 +397,8 @@ if __name__ == "__main__":
             PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_password)],
             MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_response)],
             PLOT_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_plot_id)],
+            PLOT_ID_DETAILS: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_plot_id_detail)],
+            PLOT_ID_TAKSASI: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_plot_id_taksasi)],
             PKP_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_pkp)],
             SAMPLE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_sample_input)],
             REVIEW_DATA: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_review)],
@@ -273,4 +407,5 @@ if __name__ == "__main__":
     )
 
     app.add_handler(conv_handler)
+    print("Script running...")
     app.run_polling()

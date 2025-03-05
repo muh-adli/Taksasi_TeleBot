@@ -12,10 +12,13 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 import os
 from urllib.parse import urlparse
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 from pathlib import Path
 from datetime import datetime
 import socket
+
+
+load_dotenv()  # Load environment variables from .env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -105,7 +108,7 @@ DATABASES = {
         'HOST': os.getenv("DB_HOST"),
         'PORT': 5432,
         'OPTIONS': {
-            'options': '-c search_path=public,gis'
+            'options': '-c search_path=public,gis,taksasi,plantation'
         },
     },
 }

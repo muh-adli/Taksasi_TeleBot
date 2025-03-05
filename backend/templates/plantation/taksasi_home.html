@@ -4,10 +4,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, shrink-to-fit=no"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <!-- Required header -->
     <link
@@ -47,41 +44,7 @@
   </head>
   <body>
     <div class="container-fluid p-0">
-      <header
-        class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between px-3 py-3 mb-4 border-bottom"
-      >
-        <div class="col-xl-3 col-lg-3 col-md-3 mb-2 mb-md-0">
-          <a
-            href="/"
-            class="d-inline-flex link-body-emphasis text-decoration-none"
-          >
-            <img
-              width="50"
-              height="50"
-              src="{% static 'assets/img/estate.png' %}"
-            />
-          </a>
-        </div>
-
-        <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
-          <li>
-            <a href="{% url 'landingPage' %}" class="nav-link px-2">Home</a>
-          </li>
-          <li>
-            <a href="#" class="nav-link px-2">HaStatement</a>
-          </li>
-          <li><a href="#" class="nav-link px-2">Data Management</a></li>
-          <li><a href="#" class="nav-link px-2">Geo-Monitoring</a></li>
-          <li><a href="#" class="nav-link px-2">About</a></li>
-        </ul>
-
-        <div class="col-xl-3 col-lg-3 col-md-3 text-end">
-          <button type="button" class="btn btn-outline-primary me-2">
-            Login
-          </button>
-          <button type="button" class="btn btn-primary">Sign-up</button>
-        </div>
-      </header>
+      {% include 'widget/navbar.html' %}
 
       <content>
         <div id="map"></div>
@@ -103,32 +66,42 @@
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
 
-      // Parse GeoJSON from Django context safely
-      var geojsonData = JSON.parse('{{ geojson|escapejs }}');
+      // Get GeoJSON string safely; if undefined, use "null"
+      var geojsonStr = '{{ geojson|escapejs }}';
 
-      // Add GeoJSON layer to map
-      L.geoJSON(geojsonData, {
-        style: function (feature) {
-          return { color: 'blue', weight: 2, fillOpacity: 0.3 };
-        },
-        onEachFeature: function (feature, layer) {
-          if (feature.properties) {
-            var popupContent =
-              '<b>Plot ID:</b> ' +
-              feature.properties.plot_id +
-              '<br>' +
-              '<b>Desa:</b> ' +
-              feature.properties.desa +
-              '<br>' +
-              '<b>Dusun:</b> ' +
-              feature.properties.dusun +
-              '<br>' +
-              '<b>Wilayah:</b> ' +
-              feature.properties.wilayah;
-            layer.bindPopup(popupContent);
-          }
-        },
-      }).addTo(map);
+      if (geojsonStr && geojsonStr !== 'null') {
+        try {
+          var geojsonData = JSON.parse(geojsonStr);
+
+          // Add GeoJSON layer to map
+          L.geoJSON(geojsonData, {
+            style: function (feature) {
+              return { color: 'blue', weight: 2, fillOpacity: 0.3 };
+            },
+            onEachFeature: function (feature, layer) {
+              if (feature.properties) {
+                var popupContent =
+                  '<b>Plot ID:</b> ' +
+                  feature.properties.plot_id +
+                  '<br>' +
+                  '<b>Luas:</b> ' +
+                  feature.properties.luas +
+                  '<br>' +
+                  '<b>TCH:</b> ' +
+                  feature.properties.tch +
+                  '<br>' +
+                  '<b>Tonase:</b> ' +
+                  feature.properties.tonase;
+                layer.bindPopup(popupContent);
+              }
+            },
+          }).addTo(map);
+        } catch (e) {
+          console.error('Error parsing geojson data: ', e);
+        }
+      } else {
+        console.error('GeoJSON data is not defined or empty.');
+      }
     </script>
   </body>
 </html>

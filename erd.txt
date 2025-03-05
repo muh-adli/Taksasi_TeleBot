@@ -34,3 +34,13 @@ s2_tinggi float(3,2)
 s3_batang float(3,2)
 s3_berat float(3,2)
 s3_tinggi float(3,2)
+
+[2025_mitra_perawatan]
+id Primary Key, Unique, Auto
+plot_id TEXT
+spraying_status TEXT
+spraying_date date -- format (dd/mm/yyyy)
+fertilizing_status TEXT
+fertilizing_date date -- format (dd/mm/yyyy)
+klentek_status
+klentek_date -- format (dd/mm/yyyy)
